@@ -84,7 +84,7 @@ const docName = (name) => name.replace(/\.html?$/i, '');
 
 function extractId(input) {
   const s = input.trim();
-  const m = s.match(/\/d\/([\w-]{10,})/) || s.match(/[?&]id=([\w-]{10,})/);
+  const m = s.match(/\/(?:d|folders)\/([\w-]{10,})/) || s.match(/[?&]id=([\w-]{10,})/);
   if (m) return m[1];
   return /^[\w-]{10,}$/.test(s) ? s : null;
 }
@@ -139,13 +139,24 @@ function renderError(e) {
   document.getElementById('retry').onclick = () => { clearToken(); renderLogin(); };
 }
 
+const GDOC = 'application/vnd.google-apps.document';
+const FOLDER = 'application/vnd.google-apps.folder';
+
 async function showDoc(token) {
   $app.innerHTML = `<main class="center"><p class="muted">불러오는 중…</p></main>`;
   const q = `/files/${encodeURIComponent(fileId)}`;
-  const [meta, html] = await Promise.all([
-    drive(`${q}?fields=name,webViewLink&supportsAllDrives=true`, token),
-    drive(`${q}?alt=media&supportsAllDrives=true`, token, true),
-  ]);
+  const meta = await drive(`${q}?fields=name,mimeType&supportsAllDrives=true`, token);
+
+  if (meta.mimeType === FOLDER) return showList(token, fileId, meta.name);
+  let html;
+  if (meta.mimeType === GDOC) {
+    // 업로드 시 'Google Docs로 변환' 설정이 켜져 있으면 HTML이 구글 문서가 됨 → HTML로 내보내서 표시
+    html = await drive(`${q}/export?mimeType=text/html`, token, true);
+  } else if (meta.mimeType.startsWith('application/vnd.google-apps.')) {
+    throw new Error(`HTML 파일이 아니에요. (${meta.name})`);
+  } else {
+    html = await drive(`${q}?alt=media&supportsAllDrives=true`, token, true);
+  }
   document.title = docName(meta.name);
 
   $app.innerHTML = `
@@ -166,10 +177,10 @@ async function showDoc(token) {
   $app.querySelector('iframe').src = URL.createObjectURL(blob);
 }
 
-async function showList(token) {
+async function showList(token, folderId = CONFIG.FOLDER_ID, folderName = '') {
   $app.innerHTML = `<main class="center"><p class="muted">불러오는 중…</p></main>`;
-  const q = [`mimeType='text/html'`, 'trashed=false'];
-  if (CONFIG.FOLDER_ID) q.unshift(`'${CONFIG.FOLDER_ID}' in parents`);
+  const q = [`(mimeType='text/html' or mimeType='${GDOC}')`, 'trashed=false'];
+  if (folderId) q.unshift(`'${folderId}' in parents`);
   const params = new URLSearchParams({
     q: q.join(' and '),
     orderBy: 'modifiedTime desc',
@@ -183,7 +194,7 @@ async function showList(token) {
   $app.innerHTML = `
     <main class="list">
       <header class="top">
-        <h1>우리 문서함</h1>
+        <h1>${esc(folderName || '우리 문서함')}</h1>
         <button id="logout" class="small">로그아웃</button>
       </header>
 
