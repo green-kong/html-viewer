@@ -53,6 +53,31 @@ function login() {
   });
 }
 
+// ---- 카카오톡 공유 (KAKAO_JS_KEY가 있을 때만) ----
+const kakaoReady = CONFIG.KAKAO_JS_KEY ? new Promise((resolve, reject) => {
+  const s = document.createElement('script');
+  s.src = 'https://t1.kakaocdn.net/kakao_js_sdk/2.7.4/kakao.min.js';
+  s.onload = () => { if (!Kakao.isInitialized()) Kakao.init(CONFIG.KAKAO_JS_KEY); resolve(); };
+  s.onerror = reject;
+  document.head.appendChild(s);
+}) : null;
+
+function shareKakao(id, title) {
+  const link = { mobileWebUrl: viewerLink(id), webUrl: viewerLink(id) };
+  Kakao.Share.sendDefault({
+    objectType: 'feed',
+    content: {
+      title,
+      description: '우리 문서함 · 눌러서 열어보세요',
+      imageUrl: new URL('og.png', location.href).href,
+      imageWidth: 1200,
+      imageHeight: 630,
+      link,
+    },
+    buttons: [{ title: '문서 열기', link }],
+  });
+}
+
 // ---- Drive API ----
 async function drive(path, token, asText = false) {
   const res = await fetch(API + path, { headers: { Authorization: `Bearer ${token}` } });
@@ -181,12 +206,21 @@ async function showDoc(token) {
       <header>
         <a href="./" class="back" title="목록">←</a>
         <span class="title">${esc(docName(meta.name))}</span>
+        ${kakaoReady ? `<button id="kakao" class="small kakao">카톡 공유</button>` : ''}
         <button id="copy" class="small">링크 복사</button>
       </header>
       <iframe title="${esc(meta.name)}"
         sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox allow-forms allow-modals allow-downloads"></iframe>
     </div>`;
   document.getElementById('copy').onclick = (e) => copy(viewerLink(fileId), e.currentTarget);
+  if (kakaoReady) {
+    const btn = document.getElementById('kakao');
+    btn.disabled = true;
+    kakaoReady.then(() => {
+      btn.disabled = false;
+      btn.onclick = () => shareKakao(fileId, docName(meta.name));
+    }).catch(() => btn.remove());
+  }
 
   // allow-same-origin을 주지 않아 문서 속 스크립트는 이 페이지(토큰)에 접근할 수 없음.
   // blob URL은 iOS 사파리 sandbox iframe에서 안 열려서 srcdoc을 씀
