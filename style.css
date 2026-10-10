@@ -85,7 +85,7 @@ button.small { padding: .3rem .65rem; font-size: .8rem; }
 .empty { margin-top: 32px; text-align: center; }
 
 /* 뷰어 */
-.viewer { height: 100%; display: flex; flex-direction: column; }
+.viewer { position: fixed; inset: 0; display: flex; flex-direction: column; }
 .viewer header {
   flex: none; display: flex; align-items: center; gap: 10px;
   height: calc(44px + env(safe-area-inset-top)); padding: 0 12px;
