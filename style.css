@@ -31,7 +31,7 @@ body {
   font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", "Noto Sans KR", sans-serif;
 }
 h1 { font-size: 1.35rem; margin: 0 0 .5rem; }
-p { margin: 0 0 1rem; }
+p { margin: 0 0 1rem; white-space: pre-line; word-break: break-word; }
 a { color: var(--accent); text-decoration: none; }
 .muted { color: var(--muted); font-size: .85rem; }
 .error { color: var(--error); font-size: .9rem; }

@@ -35,6 +35,9 @@ const gisReady = new Promise((resolve, reject) => {
     scope: SCOPE,
     callback: (r) => {
       if (r.error) return pending?.reject(new Error(r.error_description || r.error));
+      if (!google.accounts.oauth2.hasGrantedAllScopes(r, SCOPE)) {
+        return pending?.reject(new Error('로그인할 때 "Google Drive 파일 보기" 권한에 체크해야 해요. 다시 로그인해서 체크해 주세요.'));
+      }
       saveToken(r.access_token, Number(r.expires_in));
       pending?.resolve(r.access_token);
     },
@@ -55,11 +58,19 @@ async function drive(path, token, asText = false) {
   const res = await fetch(API + path, { headers: { Authorization: `Bearer ${token}` } });
   if (res.status === 401) { clearToken(); throw new AuthError(); }
   if (!res.ok) {
-    const err = new Error(
+    let detail = '';
+    try {
+      const { error } = await res.json();
+      detail = [error.errors?.[0]?.reason || error.status, error.message].filter(Boolean).join(': ');
+    } catch {}
+    if (res.status === 403 && /insufficient|scope/i.test(detail)) clearToken();
+    const msg =
       res.status === 404 ? '문서를 찾을 수 없거나 열람 권한이 없어요.'
+      : res.status === 403 && /insufficient|scope/i.test(detail) ? '드라이브 읽기 권한이 허용되지 않았어요. 다시 로그인해서 "Google Drive 파일 보기"에 체크해 주세요.'
+      : res.status === 403 && /accessNotConfigured|SERVICE_DISABLED|has not been used/i.test(detail) ? 'Google Cloud 프로젝트에서 Drive API가 꺼져 있어요.'
       : res.status === 403 ? '이 문서를 볼 권한이 없어요.'
-      : `불러오기 실패 (${res.status})`
-    );
+      : `불러오기 실패 (${res.status})`;
+    const err = new Error(detail ? `${msg}\n\n(${detail})` : msg);
     err.status = res.status;
     throw err;
   }
