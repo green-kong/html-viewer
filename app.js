@@ -263,9 +263,12 @@ const UA = navigator.userAgent;
 const inApp = /KAKAOTALK|Instagram|FBAN|FBAV|Line\/|NAVER\(inapp|DaumApps|everytimeApp/i.test(UA);
 
 if (inApp) {
-  const external = /KAKAOTALK/i.test(UA)
-    ? `<a class="button primary" href="kakaotalk://web/openExternal?url=${encodeURIComponent(location.href)}">외부 브라우저로 열기</a>`
+  const url = location.href;
+  const href = /KAKAOTALK/i.test(UA) ? `kakaotalk://web/openExternal?url=${encodeURIComponent(url)}`
+    : /Android/i.test(UA) ? `intent://${url.replace(/^https?:\/\//, '')}#Intent;scheme=https;package=com.android.chrome;end`
+    : /iPhone|iPad|iPod/i.test(UA) ? url.replace(/^https:/, 'x-safari-https:')
     : '';
+  const external = href ? `<a class="button primary" href="${esc(href)}">외부 브라우저로 열기</a>` : '';
   renderMessage('브라우저에서 열어주세요',
     '앱 안에서는 구글 로그인이 막혀 있어요. 오른쪽 위 메뉴(⋮ 또는 공유)에서 "다른 브라우저로 열기" / "Safari로 열기"를 눌러주세요.',
     external);
