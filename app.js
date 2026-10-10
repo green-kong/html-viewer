@@ -139,6 +139,23 @@ function renderError(e) {
   document.getElementById('retry').onclick = () => { clearToken(); renderLogin(); };
 }
 
+// srcdoc 문서에선 href="#섹션"이 부모 URL 기준으로 해석돼 iframe이 다른 페이지로 이동해버림 → 클릭을 가로채 스크롤만 함
+const HASH_LINK_FIX = `<script>document.addEventListener('click',function(e){
+  if (e.defaultPrevented) return;
+  var a = e.target.closest && e.target.closest('a[href^="#"]');
+  if (!a) return;
+  e.preventDefault();
+  var id = decodeURIComponent(a.getAttribute('href').slice(1));
+  var el = id && (document.getElementById(id) || document.getElementsByName(id)[0]);
+  if (el) el.scrollIntoView({ behavior: 'smooth' });
+  else if (!id) window.scrollTo({ top: 0, behavior: 'smooth' });
+});</script>`;
+
+function withHashLinkFix(html) {
+  const i = html.toLowerCase().lastIndexOf('</body>');
+  return i < 0 ? html + HASH_LINK_FIX : html.slice(0, i) + HASH_LINK_FIX + html.slice(i);
+}
+
 const GDOC = 'application/vnd.google-apps.document';
 const FOLDER = 'application/vnd.google-apps.folder';
 
@@ -172,9 +189,8 @@ async function showDoc(token) {
   document.getElementById('copy').onclick = (e) => copy(viewerLink(fileId), e.currentTarget);
 
   // allow-same-origin을 주지 않아 문서 속 스크립트는 이 페이지(토큰)에 접근할 수 없음.
-  // srcdoc 대신 blob URL을 쓰는 이유: srcdoc에선 href="#섹션" 링크가 부모 URL로 해석돼 깨짐
-  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-  $app.querySelector('iframe').src = URL.createObjectURL(blob);
+  // blob URL은 iOS 사파리 sandbox iframe에서 안 열려서 srcdoc을 씀
+  $app.querySelector('iframe').srcdoc = withHashLinkFix(html);
 }
 
 async function showList(token, folderId = CONFIG.FOLDER_ID, folderName = '') {
@@ -242,7 +258,18 @@ async function run(token) {
   }
 }
 
-if (!CONFIG.CLIENT_ID || CONFIG.CLIENT_ID.startsWith('YOUR_')) {
+// 구글은 카톡 등 인앱 브라우저에서 로그인을 막음(disallowed_useragent)
+const UA = navigator.userAgent;
+const inApp = /KAKAOTALK|Instagram|FBAN|FBAV|Line\/|NAVER\(inapp|DaumApps|everytimeApp/i.test(UA);
+
+if (inApp) {
+  const external = /KAKAOTALK/i.test(UA)
+    ? `<a class="button primary" href="kakaotalk://web/openExternal?url=${encodeURIComponent(location.href)}">외부 브라우저로 열기</a>`
+    : '';
+  renderMessage('브라우저에서 열어주세요',
+    '앱 안에서는 구글 로그인이 막혀 있어요. 오른쪽 위 메뉴(⋮ 또는 공유)에서 "다른 브라우저로 열기" / "Safari로 열기"를 눌러주세요.',
+    external);
+} else if (!CONFIG.CLIENT_ID || CONFIG.CLIENT_ID.startsWith('YOUR_')) {
   renderMessage('설정이 필요해요', 'config.js에 CLIENT_ID를 넣어주세요.');
 } else {
   const token = loadToken();

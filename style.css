@@ -36,7 +36,7 @@ a { color: var(--accent); text-decoration: none; }
 .muted { color: var(--muted); font-size: .85rem; }
 .error { color: var(--error); font-size: .9rem; }
 
-button, .button {
+button, .button { display: inline-block;
   font: inherit; font-size: .9rem;
   padding: .55rem 1rem;
   border: 1px solid var(--border); border-radius: 8px;
@@ -44,7 +44,7 @@ button, .button {
   cursor: pointer; white-space: nowrap;
 }
 button:disabled { opacity: .5; cursor: default; }
-button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+button.primary, .button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
 button.small { padding: .3rem .65rem; font-size: .8rem; }
 
 .center {
