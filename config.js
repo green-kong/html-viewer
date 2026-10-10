@@ -4,5 +4,5 @@
 window.CONFIG = {
   CLIENT_ID: '703745315332-cblj3v3ndgcg3vju675l67qk39deul2g.apps.googleusercontent.com',
   FOLDER_ID: '12AWKUgwZS80TkIkdJSsxw2Kl1xtOGo9e',
-  KAKAO_JS_KEY: '',
+  KAKAO_JS_KEY: '394c7aec11cb4970354d7a920612cda8',
 };
